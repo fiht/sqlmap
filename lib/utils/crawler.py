@@ -33,7 +33,8 @@ from lib.parse.sitemap import parseSitemap
 from lib.request.connect import Connect as Request
 from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
-
+count = 0
+f = set()
 def crawl(target):
     try:
         visited = set()
@@ -47,6 +48,7 @@ def crawl(target):
                 with kb.locks.limit:
                     if threadData.shared.unprocessed:
                         current = threadData.shared.unprocessed.pop()
+                        print current,'is being fucked'
                         if current in visited:
                             continue
                         elif conf.crawlExclude and re.search(conf.crawlExclude, current):
@@ -62,6 +64,12 @@ def crawl(target):
                 try:
                     if current:
                         content = Request.getPage(url=current, crawling=True, raise404=False)[0]
+                        global count
+                        count+=1
+                    if count > 20:
+                        print "more than 100 I do not like"
+                        break
+
                 except SqlmapConnectionException, ex:
                     errMsg = "connection exception detected (%s). skipping " % getSafeExString(ex)
                     errMsg += "URL '%s'" % current
@@ -110,7 +118,13 @@ def crawl(target):
                                     with kb.locks.value:
                                         threadData.shared.deeper.add(url)
                                         if re.search(r"(.*?)\?(.+)", url):
-                                            threadData.shared.value.add(url)
+                                            key = SomePipeline.get_fp(url)
+                                            if key not in f:
+                                                f.add(key)
+                                                threadData.shared.value.add(url)
+                                            else:
+                                                logger.info('%s fucked by the set'%url)
+
                     except ValueError:          # for non-valid links
                         pass
                     except UnicodeEncodeError:  # for non-HTML files
@@ -217,3 +231,37 @@ def storeResultsToFile(results):
                     f.write("%s,%s\n" % (safeCSValue(url), safeCSValue(data or "")))
                 else:
                     f.write("%s\n" % url)
+class SomePipeline(object):
+    def __init__(self, path=None):
+        self.file = None
+        self.fingerprints = set()
+    @staticmethod
+    def filter_mannly(url):
+        baned_list = ['jsessionid','html=','wbtreeid=']
+        for i in baned_list:
+            if i in url:
+                return False
+        return True
+    @staticmethod
+    def get_fp(url):
+        things = urlparse.urlparse(url)
+        netloc = things[1]
+        path = things[2]
+        params = things[3]
+        querys = ".".join(sorted([i.split('=')[0] for i in things[4].split('&')]))
+        return '.'.join([netloc, path, params, querys])
+
+    def request_seen(self, url):
+        if not SomePipeline.filter_mannly(url):
+            return True
+        fp = self.get_fp(url)
+        if fp in self.fingerprints:
+            return True
+        else:
+            self.fingerprints.add(fp)
+            return False
+    def process_item(self, item, spider):
+        if not self.request_seen(item['url']):
+            e= open("./result",'a+')
+            e.writelines(item['url']+'\n')
+            e.close()

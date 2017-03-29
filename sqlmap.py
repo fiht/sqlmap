@@ -148,7 +148,7 @@ def main():
             liveTest()
         else:
             try:
-                start()
+                start() # start==
             except thread.error as ex:
                 if "can't start new thread" in getSafeExString(ex):
                     errMsg = "unable to start new threads. Please check OS (u)limits"
