@@ -41,7 +41,7 @@ from pymongo import MongoClient
 
 count = 0
 f = set()
-
+ext_hosts = set()
 
 def crawl(target):
     try:
@@ -122,11 +122,13 @@ def crawl(target):
                                 elif not _:  # not the same target host, add to database
                                     cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
                                     domain = urlparse.urlparse(url)[1]
-                                    try:
-                                        cli.insert({'target': url, 'domain': domain})
-                                    except Exception as e:
-                                        logger.info('%s %s' % (domain, str(e)))
-                                        pass
+                                    if domain not in ext_hosts:
+                                        ext_hosts.add(domain)
+                                        try:
+                                            cli.insert({'target': url, 'domain': domain})
+                                        except Exception as e:
+                                            logger.info('%s %s' % (domain, str(e)))
+                                            pass
                                     continue
 
                                 if url.split('.')[-1].lower() not in CRAWL_EXCLUDE_EXTENSIONS:
