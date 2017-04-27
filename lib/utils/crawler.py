@@ -33,8 +33,16 @@ from lib.parse.sitemap import parseSitemap
 from lib.request.connect import Connect as Request
 from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
+
+mongo_host = 'o.fiht.me'
+mongo_port = 250001
+
+from pymongo import MongoClient
+
 count = 0
 f = set()
+
+
 def crawl(target):
     try:
         visited = set()
@@ -48,7 +56,6 @@ def crawl(target):
                 with kb.locks.limit:
                     if threadData.shared.unprocessed:
                         current = threadData.shared.unprocessed.pop()
-                        print current,'is being fucked'
                         if current in visited:
                             continue
                         elif conf.crawlExclude and re.search(conf.crawlExclude, current):
@@ -65,8 +72,8 @@ def crawl(target):
                     if current:
                         content = Request.getPage(url=current, crawling=True, raise404=False)[0]
                         global count
-                        count+=1
-                    if count > 20:
+                        count += 1
+                    if count > 100:
                         print "more than 100 I do not like"
                         break
 
@@ -101,7 +108,8 @@ def crawl(target):
                             href = tag.get("href") if hasattr(tag, "get") else tag.group("href")
 
                             if href:
-                                if threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
+                                if threadData.lastRedirectURL and threadData.lastRedirectURL[
+                                    0] == threadData.lastRequestUID:
                                     current = threadData.lastRedirectURL[1]
                                 url = urlparse.urljoin(current, href)
 
@@ -111,7 +119,14 @@ def crawl(target):
                                 if conf.scope:
                                     if not re.search(conf.scope, url, re.I):
                                         continue
-                                elif not _:
+                                elif not _:  # not the same target host, add to database
+                                    cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
+                                    domain = urlparse(url)[1]
+                                    try:
+                                        cli.insert({'target': 'url', 'domain': domain})
+                                    except Exception as e:
+                                        logger.info('%s %s' % (domain, str(e)))
+                                        pass
                                     continue
 
                                 if url.split('.')[-1].lower() not in CRAWL_EXCLUDE_EXTENSIONS:
@@ -123,9 +138,9 @@ def crawl(target):
                                                 f.add(key)
                                                 threadData.shared.value.add(url)
                                             else:
-                                                logger.info('%s fucked by the set'%url)
+                                                logger.info('%s fucked by the set' % url)
 
-                    except ValueError:          # for non-valid links
+                    except ValueError:  # for non-valid links
                         pass
                     except UnicodeEncodeError:  # for non-HTML files
                         pass
@@ -135,7 +150,8 @@ def crawl(target):
 
                 if conf.verbose in (1, 2):
                     threadData.shared.count += 1
-                    status = '%d/%d links visited (%d%%)' % (threadData.shared.count, threadData.shared.length, round(100.0 * threadData.shared.count / threadData.shared.length))
+                    status = '%d/%d links visited (%d%%)' % (threadData.shared.count, threadData.shared.length, round(
+                        100.0 * threadData.shared.count / threadData.shared.length))
                     dataToStdout("\r[%s] [INFO] %s" % (time.strftime("%X"), status), True)
 
         threadData.shared.deeper = set()
@@ -180,7 +196,7 @@ def crawl(target):
             if not conf.bulkFile:
                 logger.info("searching for links with depth %d" % (i + 1))
 
-            runThreads(numThreads, crawlThread, threadChoice=(i>0))
+            runThreads(numThreads, crawlThread, threadChoice=(i > 0))
             clearConsoleLine(True)
 
             if threadData.shared.deeper:
@@ -204,6 +220,7 @@ def crawl(target):
                 kb.targets.add((url, None, None, None, None))
 
         storeResultsToFile(kb.targets)
+
 
 def storeResultsToFile(results):
     if not results:
@@ -231,17 +248,21 @@ def storeResultsToFile(results):
                     f.write("%s,%s\n" % (safeCSValue(url), safeCSValue(data or "")))
                 else:
                     f.write("%s\n" % url)
+
+
 class SomePipeline(object):
     def __init__(self, path=None):
         self.file = None
         self.fingerprints = set()
+
     @staticmethod
     def filter_mannly(url):
-        baned_list = ['jsessionid','html=','wbtreeid=']
+        baned_list = ['jsessionid', 'html=', 'wbtreeid=']
         for i in baned_list:
             if i in url:
                 return False
         return True
+
     @staticmethod
     def get_fp(url):
         things = urlparse.urlparse(url)
@@ -260,8 +281,9 @@ class SomePipeline(object):
         else:
             self.fingerprints.add(fp)
             return False
+
     def process_item(self, item, spider):
         if not self.request_seen(item['url']):
-            e= open("./result",'a+')
-            e.writelines(item['url']+'\n')
+            e = open("./result", 'a+')
+            e.writelines(item['url'] + '\n')
             e.close()
