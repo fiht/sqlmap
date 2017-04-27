@@ -8,9 +8,9 @@ See the file 'doc/COPYING' for copying permission
 import httplib
 import os
 import re
-import urlparse
 import tempfile
 import time
+import urlparse
 
 from lib.core.common import checkSameHost
 from lib.core.common import clearConsoleLine
@@ -121,7 +121,7 @@ def crawl(target):
                                         continue
                                 elif not _:  # not the same target host, add to database
                                     cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
-                                    domain = urlparse(url)[1]
+                                    domain = urlparse.urlparse(url)[1]
                                     try:
                                         cli.insert({'target': 'url', 'domain': domain})
                                     except Exception as e:
