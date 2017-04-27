@@ -35,7 +35,7 @@ from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
 
 mongo_host = 'o.fiht.me'
-mongo_port = 250001
+mongo_port = 25001
 
 from pymongo import MongoClient
 
