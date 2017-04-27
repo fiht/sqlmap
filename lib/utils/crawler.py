@@ -123,7 +123,7 @@ def crawl(target):
                                     cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
                                     domain = urlparse.urlparse(url)[1]
                                     try:
-                                        cli.insert({'target': 'url', 'domain': domain})
+                                        cli.insert({'target': url, 'domain': domain})
                                     except Exception as e:
                                         logger.info('%s %s' % (domain, str(e)))
                                         pass
