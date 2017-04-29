@@ -6,11 +6,15 @@ See the file 'doc/COPYING' for copying permission
 """
 
 import httplib
+import json
 import os
 import re
 import tempfile
+import threading
 import time
 import urlparse
+
+import redis
 
 from lib.core.common import checkSameHost
 from lib.core.common import clearConsoleLine
@@ -37,6 +41,9 @@ from thirdparty.oset.pyoset import oset
 mongo_host = 'wordpress.fiht.me'
 mongo_port = 60000
 
+redis_cli = redis.Redis(host='wordpress.fiht.me',port=60001,password='')
+# so fast after use redis
+lock = threading.RLock()
 from pymongo import MongoClient
 
 
@@ -107,8 +114,7 @@ def crawl(target):
                             href = tag.get("href") if hasattr(tag, "get") else tag.group("href")
 
                             if href:
-                                if threadData.lastRedirectURL and threadData.lastRedirectURL[
-                                    0] == threadData.lastRequestUID:
+                                if threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
                                     current = threadData.lastRedirectURL[1]
                                 url = urlparse.urljoin(current, href)
 
@@ -123,7 +129,16 @@ def crawl(target):
                                     if domain not in ext_hosts:
                                         ext_hosts.add(domain)
                                         try:
-                                            cli.insert({'target': url, 'domain': domain,'Referer':current})
+                                            #global lock
+                                            #lock.acquire()
+                                            t = {'target': url, 'domain': domain,'Referer':current}
+                                            #cli.insert(t)
+                                            if redis_cli.sadd('domains',domain):
+                                                redis_cli.lpush('info',json.dumps(t))
+                                                logger.info('inserted %s '%domain)
+                                            else:
+                                                logger.info('fucked by redis set %s'%target)
+                                            #lock.release()
                                         except Exception as e:
                                             logger.info('%s %s' % (domain, str(e)))
                                             pass
