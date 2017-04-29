@@ -34,24 +34,24 @@ from lib.request.connect import Connect as Request
 from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
 
-mongo_host = 'o.fiht.me'
-mongo_port = 25001
+mongo_host = 'wordpress.fiht.me'
+mongo_port = 60000
 
 from pymongo import MongoClient
 
-count = 0
-f = set()
-ext_hosts = set()
 
 def crawl(target):
     try:
+        f = set()
+        ext_hosts = set()
         visited = set()
         threadData = getCurrentThreadData()
         threadData.shared.value = oset()
+        count = 0
 
         def crawlThread():
             threadData = getCurrentThreadData()
-
+            cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
             while kb.threadContinue:
                 with kb.locks.limit:
                     if threadData.shared.unprocessed:
@@ -71,11 +71,10 @@ def crawl(target):
                 try:
                     if current:
                         content = Request.getPage(url=current, crawling=True, raise404=False)[0]
-                        global count
-                        count += 1
-                    if count > 100:
-                        print "more than 100 I do not like"
-                        break
+
+                        # if count > 100:
+                        #     print "more than 100 I do not like"
+                        #     break
 
                 except SqlmapConnectionException, ex:
                     errMsg = "connection exception detected (%s). skipping " % getSafeExString(ex)
@@ -120,12 +119,11 @@ def crawl(target):
                                     if not re.search(conf.scope, url, re.I):
                                         continue
                                 elif not _:  # not the same target host, add to database
-                                    cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
                                     domain = urlparse.urlparse(url)[1]
                                     if domain not in ext_hosts:
                                         ext_hosts.add(domain)
                                         try:
-                                            cli.insert({'target': url, 'domain': domain})
+                                            cli.insert({'target': url, 'domain': domain,'Referer':current})
                                         except Exception as e:
                                             logger.info('%s %s' % (domain, str(e)))
                                             pass
@@ -140,7 +138,8 @@ def crawl(target):
                                                 f.add(key)
                                                 threadData.shared.value.add(url)
                                             else:
-                                                logger.info('%s fucked by the set' % url)
+                                                pass
+                                                # logger.info('%s fucked by the set' % url)
 
                     except ValueError:  # for non-valid links
                         pass
@@ -153,7 +152,7 @@ def crawl(target):
                 if conf.verbose in (1, 2):
                     threadData.shared.count += 1
                     status = '%d/%d links visited (%d%%)' % (threadData.shared.count, threadData.shared.length, round(
-                        100.0 * threadData.shared.count / threadData.shared.length))
+                            100.0 * threadData.shared.count / threadData.shared.length))
                     dataToStdout("\r[%s] [INFO] %s" % (time.strftime("%X"), status), True)
 
         threadData.shared.deeper = set()
