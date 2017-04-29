@@ -78,10 +78,10 @@ def crawl(target):
                 try:
                     if current:
                         content = Request.getPage(url=current, crawling=True, raise404=False)[0]
-
-                        # if count > 100:
-                        #     print "more than 100 I do not like"
-                        #     break
+                        global count
+                        if count > 100:
+                            print "more than 100 I do not like"
+                            break
 
                 except SqlmapConnectionException, ex:
                     errMsg = "connection exception detected (%s). skipping " % getSafeExString(ex)
