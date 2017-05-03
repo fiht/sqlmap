@@ -41,12 +41,13 @@ from thirdparty.oset.pyoset import oset
 mongo_host = 'wordpress.fiht.me'
 mongo_port = 60000
 
-redis_cli = redis.Redis(host='wordpress.fiht.me',port=60001,password='')
+redis_cli = redis.Redis(host='wordpress.fiht.me',port=60001,password='Showmetheway!')
 # so fast after use redis
 lock = threading.RLock()
 from pymongo import MongoClient
 
 
+count = 0
 def crawl(target):
     try:
         f = set()
@@ -54,7 +55,6 @@ def crawl(target):
         visited = set()
         threadData = getCurrentThreadData()
         threadData.shared.value = oset()
-        count = 0
 
         def crawlThread():
             threadData = getCurrentThreadData()
