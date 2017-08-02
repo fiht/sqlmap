@@ -38,16 +38,16 @@ from lib.request.connect import Connect as Request
 from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
 
-mongo_host = 'wordpress.fiht.me'
-mongo_port = 60000
+from connect import r_cli, m_cli
 
-redis_cli = redis.Redis(host='wordpress.fiht.me',port=60001,password='Showmetheway!')
+redis_cli = r_cli
 # so fast after use redis
 lock = threading.RLock()
 from pymongo import MongoClient
 
-
 count = 0
+
+
 def crawl(target):
     try:
         f = set()
@@ -58,7 +58,6 @@ def crawl(target):
 
         def crawlThread():
             threadData = getCurrentThreadData()
-            cli = MongoClient(host=mongo_host, port=mongo_port)['sqlmap']['sqlmap']
             while kb.threadContinue:
                 with kb.locks.limit:
                     if threadData.shared.unprocessed:
@@ -80,8 +79,11 @@ def crawl(target):
                         content = Request.getPage(url=current, crawling=True, raise404=False)[0]
                         global count
                         if count > 100:
-                            print "more than 100 I do not like"
+                            print
+                            "more than 100 I do not like"
                             break
+                        else:
+                            count += 1
 
                 except SqlmapConnectionException, ex:
                     errMsg = "connection exception detected (%s). skipping " % getSafeExString(ex)
@@ -114,7 +116,8 @@ def crawl(target):
                             href = tag.get("href") if hasattr(tag, "get") else tag.group("href")
 
                             if href:
-                                if threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
+                                if threadData.lastRedirectURL and threadData.lastRedirectURL[
+                                    0] == threadData.lastRequestUID:
                                     current = threadData.lastRedirectURL[1]
                                 url = urlparse.urljoin(current, href)
 
@@ -129,16 +132,16 @@ def crawl(target):
                                     if domain not in ext_hosts:
                                         ext_hosts.add(domain)
                                         try:
-                                            #global lock
-                                            #lock.acquire()
-                                            t = {'target': url, 'domain': domain,'Referer':current}
-                                            #cli.insert(t)
-                                            if redis_cli.sadd('domains',domain):
-                                                redis_cli.lpush('info',json.dumps(t))
-                                                logger.info('inserted %s '%domain)
+                                            # global lock
+                                            # lock.acquire()
+                                            t = {'target': url, 'domain': domain, 'Referer': current}
+                                            # m_cli.insert(t)
+                                            if redis_cli.sadd('domains', domain):
+                                                redis_cli.lpush('info', json.dumps(t))
+                                                logger.info('inserted %s ' % domain)
                                             else:
-                                                logger.info('fucked by redis set %s'%target)
-                                            #lock.release()
+                                                logger.info('fucked by redis set %s' % target)
+                                                # lock.release()
                                         except Exception as e:
                                             logger.info('%s %s' % (domain, str(e)))
                                             pass
@@ -167,7 +170,7 @@ def crawl(target):
                 if conf.verbose in (1, 2):
                     threadData.shared.count += 1
                     status = '%d/%d links visited (%d%%)' % (threadData.shared.count, threadData.shared.length, round(
-                            100.0 * threadData.shared.count / threadData.shared.length))
+                        100.0 * threadData.shared.count / threadData.shared.length))
                     dataToStdout("\r[%s] [INFO] %s" % (time.strftime("%X"), status), True)
 
         threadData.shared.deeper = set()
