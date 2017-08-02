@@ -38,12 +38,11 @@ from lib.request.connect import Connect as Request
 from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.oset.pyoset import oset
 
-from connect import r_cli, m_cli
+from connect import r_cli
 
 redis_cli = r_cli
 # so fast after use redis
 lock = threading.RLock()
-from pymongo import MongoClient
 
 count = 0
 

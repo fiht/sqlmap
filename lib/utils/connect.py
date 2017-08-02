@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 from redis import Redis
 
-m_cli = MongoClient(host='xx', port='')['sqlmap']['sqlmapFound']
-r_cli = Redis(host='xxxx')
+r_cli = Redis(host="10.4.101.110")
 
